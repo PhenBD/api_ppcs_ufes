@@ -1,0 +1,15 @@
+# Ignore arquivos de log
+*.log
+
+# Ignore diretórios de ambiente virtual
+venv/
+
+# Ignore arquivos de configuração do editor
+.vscode/
+
+# Ignore arquivos compilados
+*.pyc
+__pycache__/
+
+# Ignore cache pdf
+pdf_cache/

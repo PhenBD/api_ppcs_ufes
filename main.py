@@ -2,7 +2,6 @@ from fastapi import FastAPI
 import requests
 from bs4 import BeautifulSoup
 import camelot
-import io
 import aiohttp
 import asyncio
 from cachetools import TTLCache
@@ -70,14 +69,12 @@ def filter_rows(table):
     keys = ["Período", "Departamento", "Código", "Nome da Disciplina", "Cr", "C.H.S", "Distribuição T.E.L", "Pré-Requisitos", "Tipo"]
     combined_table = []
     for row in table:
-        if "Período" in row[0] or "Disciplina" in row[0] or "Estágio" in row[0] or "Trabalho de Conclusão" in row[0]:
-            continue
-        elif combined_table and row[0] == "":
+        if combined_table and row[0] == "":
             combined_table[-1]["Nome da Disciplina"] = combined_table[-1]["Nome da Disciplina"] + " " + row[3]
         else:
-            if len(row) == len(keys):
-                for atr in range(len(row)):
-                    row[atr] = row[atr].replace("\n", "")
+            if len(row) == len(keys) and not any(s in row[0] for s in ['Período', 'Disciplina', 'Estágio']):
+                row[1] = " ".join(str(row[1]).replace("\n", " ").split())
+                row[3] = " ".join(str(row[3]).replace("\n", " ").split())
                 combined_table.append(dict(zip(keys, row)))
     return combined_table
 

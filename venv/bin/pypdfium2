@@ -1,4 +1,4 @@
-#!/home/pedrohbd/webscrapping/python_ppcs_ufes/venv/bin/python3
+#!/home/pedrohbd/api_ppcs_ufes/venv/bin/python3
 # -*- coding: utf-8 -*-
 import re
 import sys

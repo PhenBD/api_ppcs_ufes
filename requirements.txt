@@ -2,4 +2,8 @@ fastapi
 requests
 beautifulsoup4
 pdfplumber
+camelot-py[cv]
+aiohttp
+asyncio
+cachetools
 uvicorn

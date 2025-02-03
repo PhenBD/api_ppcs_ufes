@@ -13,3 +13,4 @@ __pycache__/
 
 # Ignore cache pdf
 pdf_cache/
+temp.pdf

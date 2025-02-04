@@ -4,12 +4,29 @@ from bs4 import BeautifulSoup
 import camelot
 import aiohttp
 import asyncio
-from cachetools import TTLCache
+from spellchecker import SpellChecker
+from functools import lru_cache
+import ollama
+import re
+
+model = "deepseek-r1:14b"
+
+# Configurações Iniciais
+spell = SpellChecker(language='pt')  # IA Leve
 
 app = FastAPI()
 
-# Cache com TTL (Time To Live) de 1 hora
-cache = TTLCache(maxsize=100, ttl=3600)
+def corrigir_com_deepseek(texto: str) -> str:
+    try:
+        # Tente chamar uma função simples do Ollama
+        response = ollama.generate(model=model, prompt="Gere como resposta apenas a correção do texto: " + texto)
+        texto_limpo = re.sub(r'<think>.*?</think>', '', response["response"], flags=re.DOTALL).strip()
+        print(texto_limpo)
+        return texto_limpo
+    except ImportError:
+        print("Ollama não está instalado.")
+    except ConnectionError:
+        print("Falha na conexão com Ollama. Verifique se o Ollama está em execução e acessível.")
 
 def get_ppcs():
     url = "https://prograd.ufes.br/ppc"
@@ -46,9 +63,6 @@ def get_ppcs():
     return ppcs
 
 async def fetch_pdf(session, pdf_url):
-    if pdf_url in cache:
-        return cache[pdf_url]
-    
     async with session.get(pdf_url) as response:
         content = await response.read()
         with open("temp.pdf", "wb") as f:
@@ -62,7 +76,6 @@ async def fetch_pdf(session, pdf_url):
         # Filter rows
         combined_table = filter_rows(combined_table)
         
-        cache[pdf_url] = combined_table
         return combined_table
 
 def filter_rows(table):
@@ -72,9 +85,10 @@ def filter_rows(table):
         if combined_table and row[0] == "":
             combined_table[-1]["Nome da Disciplina"] = combined_table[-1]["Nome da Disciplina"] + " " + row[3]
         else:
-            if len(row) == len(keys) and not any(s in row[0] for s in ['Período', 'Disciplina', 'Estágio']):
-                row[1] = " ".join(str(row[1]).replace("\n", " ").split())
-                row[3] = " ".join(str(row[3]).replace("\n", " ").split())
+            if len(row) == len(keys) and not any(s in row[0] for s in ['Período', 'Disciplina', 'Estágio', 'Conclusão']):
+                row[1] = corrigir_com_deepseek(row[1])
+                row[3] = corrigir_com_deepseek(row[3])
+                print(row)
                 combined_table.append(dict(zip(keys, row)))
     return combined_table
 

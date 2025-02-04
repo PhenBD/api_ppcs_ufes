@@ -5,7 +5,6 @@ import camelot
 import aiohttp
 import asyncio
 from spellchecker import SpellChecker
-from functools import lru_cache
 import ollama
 import re
 

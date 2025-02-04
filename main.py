@@ -18,7 +18,7 @@ app = FastAPI()
 def corrigir_com_deepseek(texto: str) -> str:
     try:
         # Tente chamar uma função simples do Ollama
-        response = ollama.generate(model=model, prompt="Gere como resposta apenas a correção do texto: " + texto)
+        response = ollama.generate(model=model, prompt="Gere como resposta apenas a correção do texto em uma mesma linha, mantendo a formatação original: " + texto)
         texto_limpo = re.sub(r'<think>.*?</think>', '', response["response"], flags=re.DOTALL).strip()
         print(texto_limpo)
         return texto_limpo
@@ -27,7 +27,7 @@ def corrigir_com_deepseek(texto: str) -> str:
     except ConnectionError:
         print("Falha na conexão com Ollama. Verifique se o Ollama está em execução e acessível.")
 
-def get_ppcs():
+async def get_ppcs():
     url = "https://prograd.ufes.br/ppc"
     response = requests.get(url)
     soup = BeautifulSoup(response.text, "html.parser")
@@ -58,6 +58,8 @@ def get_ppcs():
                      "turno": turno,
                      "versao": versao,
                      "href": href})
+        
+    await fetch_all_pdfs(ppcs)
         
     return ppcs
 
@@ -102,7 +104,6 @@ async def fetch_all_pdfs(ppcs):
             ppc["disciplinas"] = tables
 
 @app.get("/ppcs")
-async def ppcs():
+def ppcs():
     data = get_ppcs()
-    await fetch_all_pdfs(data)
     return {"ppcs": data}

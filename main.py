@@ -9,12 +9,14 @@ import ollama
 import re
 import time
 
-model = "deepseek-r1:14b"
+model = "splitpierre/bode-alpaca-pt-br"
 
 # Configurações Iniciais
 spell = SpellChecker(language='pt')  # IA Leve
 
 app = FastAPI()
+
+pdf_concluidos = 0
 
 def corrigir_com_deepseek(texto: str) -> str:
     start_time = time.time()
@@ -74,6 +76,8 @@ async def get_ppcs():
 
 async def fetch_pdf(session, pdf_url):
     async with session.get(pdf_url) as response:
+        start_time = time.time()
+        
         content = await response.read()
         with open("temp.pdf", "wb") as f:
             f.write(content)
@@ -85,6 +89,11 @@ async def fetch_pdf(session, pdf_url):
         
         # Filter rows
         combined_table = filter_rows(combined_table)
+        
+        elapsed_time = time.time() - start_time
+        print(f"Tempo decorrido em fetch_pdf: {elapsed_time:.2f} segundos")
+        pdf_concluidos+=1
+        print("ppc concluídos: " + pdf_concluidos + "/" + len(ppcs))
         
         return combined_table
 
@@ -109,17 +118,19 @@ async def fetch_all_pdfs(ppcs):
     async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(limit=1)) as session:
         tasks = []
         for ppc in ppcs[:1]:  # Limitar a 10 PDFs para processamento
-            start_time = time.time()
             task = asyncio.create_task(fetch_pdf(session, ppc["href"]))
             tasks.append(task)
-            elapsed_time = time.time() - start_time
-            print(f"Tempo decorrido em fetch_pdf: {elapsed_time:.2f} segundos")
+            
         discipline_list = await asyncio.gather(*tasks)
-        for i, ppc, disciplines in zip(ppcs, discipline_list):
+        
+        for ppc, disciplines in zip(ppcs, discipline_list):
             ppc["disciplinas"] = disciplines
-            print("ppc concluídos: " + i + "/" + len(ppcs))
 
 @app.get("/ppcs")
-def ppcs():
-    data = get_ppcs()
+async def ppcs():
+    start_time = time.time()
+    data = await get_ppcs()
+    await fetch_all_pdfs(data)
+    elapsed_time = time.time() - start_time
+    print(f"Tempo decorrido em ppcs: {elapsed_time:.2f} segundos")
     return {"ppcs": data}

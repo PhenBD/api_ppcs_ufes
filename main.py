@@ -7,6 +7,7 @@ import asyncio
 from spellchecker import SpellChecker
 import ollama
 import re
+import time
 
 model = "deepseek-r1:14b"
 
@@ -16,6 +17,7 @@ spell = SpellChecker(language='pt')  # IA Leve
 app = FastAPI()
 
 def corrigir_com_deepseek(texto: str) -> str:
+    start_time = time.time()
     try:
         # Tente chamar uma função simples do Ollama
         response = ollama.generate(model=model, prompt="Gere como resposta apenas a correção do texto em uma mesma linha, mantendo a formatação original: " + texto)
@@ -26,8 +28,12 @@ def corrigir_com_deepseek(texto: str) -> str:
         print("Ollama não está instalado.")
     except ConnectionError:
         print("Falha na conexão com Ollama. Verifique se o Ollama está em execução e acessível.")
+    finally:
+        elapsed_time = time.time() - start_time
+        print(f"Tempo decorrido em corrigir_com_deepseek: {elapsed_time:.2f} segundos")
 
 async def get_ppcs():
+    start_time = time.time()
     url = "https://prograd.ufes.br/ppc"
     response = requests.get(url)
     soup = BeautifulSoup(response.text, "html.parser")
@@ -59,6 +65,9 @@ async def get_ppcs():
                      "versao": versao,
                      "href": href})
         
+    elapsed_time = time.time() - start_time
+    print(f"Tempo decorrido em ler html: {elapsed_time:.2f} segundos")
+        
     await fetch_all_pdfs(ppcs)
         
     return ppcs
@@ -80,6 +89,7 @@ async def fetch_pdf(session, pdf_url):
         return combined_table
 
 def filter_rows(table):
+    start_time = time.time()
     keys = ["Período", "Departamento", "Código", "Nome da Disciplina", "Cr", "C.H.S", "Distribuição T.E.L", "Pré-Requisitos", "Tipo"]
     combined_table = []
     for row in table:
@@ -91,17 +101,23 @@ def filter_rows(table):
                 row[3] = corrigir_com_deepseek(row[3])
                 print(row)
                 combined_table.append(dict(zip(keys, row)))
+    elapsed_time = time.time() - start_time
+    print(f"Tempo decorrido em filter_rows: {elapsed_time:.2f} segundos")
     return combined_table
 
 async def fetch_all_pdfs(ppcs):
     async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(limit=1)) as session:
         tasks = []
         for ppc in ppcs[:1]:  # Limitar a 10 PDFs para processamento
+            start_time = time.time()
             task = asyncio.create_task(fetch_pdf(session, ppc["href"]))
             tasks.append(task)
-        tables_list = await asyncio.gather(*tasks)
-        for ppc, tables in zip(ppcs, tables_list):
-            ppc["disciplinas"] = tables
+            elapsed_time = time.time() - start_time
+            print(f"Tempo decorrido em fetch_pdf: {elapsed_time:.2f} segundos")
+        discipline_list = await asyncio.gather(*tasks)
+        for i, ppc, disciplines in zip(ppcs, discipline_list):
+            ppc["disciplinas"] = disciplines
+            print("ppc concluídos: " + i + "/" + len(ppcs))
 
 @app.get("/ppcs")
 def ppcs():

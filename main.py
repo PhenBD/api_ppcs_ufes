@@ -18,11 +18,11 @@ app = FastAPI()
 
 pdf_concluidos = 0
 
-def corrigir_com_deepseek(data):
+def corrigir_com_deepseek(texto: str) -> str:
     start_time = time.time()
     try:
         # Tente chamar uma função simples do Ollama
-        response = ollama.generate(model=model, prompt=f'Corrija os campos de "Departamento" e "Nome da Disciplina" no arquivo json a seguir, mantendo a formatação original: {data}')
+        response = ollama.generate(model=model, prompt="Gere como resposta apenas a correção do texto em uma mesma linha, mantendo a formatação original: " + texto)
         texto_limpo = re.sub(r'<think>.*?</think>', '', response["response"], flags=re.DOTALL).strip()
         print(texto_limpo)
         return texto_limpo
@@ -107,6 +107,8 @@ def filter_rows(table):
             combined_table[-1]["Nome da Disciplina"] = combined_table[-1]["Nome da Disciplina"] + " " + row[3]
         else:
             if len(row) == len(keys) and not any(s in row[0] for s in ['Período', 'Disciplina', 'Estágio', 'Conclusão']):
+                row[1] = corrigir_com_deepseek(row[1])
+                row[3] = corrigir_com_deepseek(row[3])
                 print(row)
                 combined_table.append(dict(zip(keys, row)))
     elapsed_time = time.time() - start_time
@@ -132,5 +134,4 @@ async def ppcs():
     await fetch_all_pdfs(data)
     elapsed_time = time.time() - start_time
     print(f"Tempo decorrido em ppcs: {elapsed_time:.2f} segundos")
-    data = corrigir_com_deepseek(data)
     return {"ppcs": data}

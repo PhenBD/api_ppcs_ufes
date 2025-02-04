@@ -18,11 +18,11 @@ app = FastAPI()
 
 pdf_concluidos = 0
 
-def corrigir_com_deepseek(texto: str) -> str:
+def corrigir_com_deepseek(data):
     start_time = time.time()
     try:
         # Tente chamar uma função simples do Ollama
-        response = ollama.generate(model=model, prompt="Gere como resposta apenas a correção do texto em uma mesma linha, mantendo a formatação original: " + texto)
+        response = ollama.generate(model=model, prompt=f'Corrija os campos de "Departamento" e "Nome da Disciplina" no arquivo json a seguir, mantendo a formatação original: {data}')
         texto_limpo = re.sub(r'<think>.*?</think>', '', response["response"], flags=re.DOTALL).strip()
         print(texto_limpo)
         return texto_limpo
@@ -75,6 +75,7 @@ async def get_ppcs():
     return ppcs
 
 async def fetch_pdf(session, pdf_url):
+    global pdf_concluidos
     async with session.get(pdf_url) as response:
         start_time = time.time()
         
@@ -93,7 +94,7 @@ async def fetch_pdf(session, pdf_url):
         elapsed_time = time.time() - start_time
         print(f"Tempo decorrido em fetch_pdf: {elapsed_time:.2f} segundos")
         pdf_concluidos+=1
-        print("ppc concluídos: " + pdf_concluidos + "/" + len(ppcs))
+        print(f"ppc concluídos: {pdf_concluidos}")
         
         return combined_table
 
@@ -106,8 +107,6 @@ def filter_rows(table):
             combined_table[-1]["Nome da Disciplina"] = combined_table[-1]["Nome da Disciplina"] + " " + row[3]
         else:
             if len(row) == len(keys) and not any(s in row[0] for s in ['Período', 'Disciplina', 'Estágio', 'Conclusão']):
-                row[1] = corrigir_com_deepseek(row[1])
-                row[3] = corrigir_com_deepseek(row[3])
                 print(row)
                 combined_table.append(dict(zip(keys, row)))
     elapsed_time = time.time() - start_time
@@ -133,4 +132,5 @@ async def ppcs():
     await fetch_all_pdfs(data)
     elapsed_time = time.time() - start_time
     print(f"Tempo decorrido em ppcs: {elapsed_time:.2f} segundos")
+    data = corrigir_com_deepseek(data)
     return {"ppcs": data}
